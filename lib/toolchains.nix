@@ -46,7 +46,8 @@ stdenv.mkDerivation {
     + lib.optionalString (version != "latest") ''
       cp ${moon-patched}/bin/moon $out/bin/moon
       cp ${moon-patched}/bin/moonrun $out/bin/moonrun
-
+    ''
+    + lib.optionalString (version != "latest" && !(tinycc.meta.broken or false)) ''
       rm $out/bin/internal/tcc
       ln -sf ${tinycc.out}/bin/tcc $out/bin/internal/tcc
     ''
