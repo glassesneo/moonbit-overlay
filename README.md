@@ -9,19 +9,19 @@ NOTE: [moonbit-compiler](https://github.com/moonbitlang/moonbit-compiler) was al
 ### Run [moon](https://github.com/moonbitlang/moon) in one line
 
 ```bash
-nix run github:moonbit-community/moonbit-overlay#moon
+nix run github:glassesneo/moonbit-overlay#moon
 ```
 
 ### List all available binaries
 
 ```bash
-nix run github:moonbit-community/moonbit-overlay#<tab>
+nix run github:glassesneo/moonbit-overlay#<tab>
 ```
 
 ### Create devshell from template
 
 ```bash
-nix flake init -t github:moonbit-community/moonbit-overlay
+nix flake init -t github:glassesneo/moonbit-overlay
 ```
 
 ## Features
@@ -43,7 +43,7 @@ nix flake init -t github:moonbit-community/moonbit-overlay
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     devshell.url = "github:numtide/devshell";
-    moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
+    moonbit-overlay.url = "github:glassesneo/moonbit-overlay";
   };
 
   outputs = inputs@{ flake-parts, ... }:
@@ -85,7 +85,7 @@ nix flake init -t github:moonbit-community/moonbit-overlay
     flake-parts.url = "github:hercules-ci/flake-parts";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
+    moonbit-overlay.url = "github:glassesneo/moonbit-overlay";
     moon-registry = {
       url = "mooncakes.io/git/index";
       flake = false;
