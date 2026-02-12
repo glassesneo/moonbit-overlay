@@ -8,6 +8,7 @@
 # 4. Build moon package with bundled $MOON_HOME
 {
   lib,
+  jq,
   fetchurl,
   stdenv,
   symlinkJoin,
@@ -64,6 +65,7 @@ let
 
   bundleWithRegistry = import ./bundleWithRegistry.nix {
     inherit
+      jq
       symlinkJoin
       makeWrapper
       toolchains

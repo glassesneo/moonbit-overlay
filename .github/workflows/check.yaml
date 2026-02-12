@@ -18,3 +18,56 @@ jobs:
       - name: Run nix flake check
         run: nix flake check
 
+  smoke-latest:
+    name: Smoke test moonbit_latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v30
+
+      - name: Build moonbit_latest
+        timeout-minutes: 20
+        run: nix build .#moonbit_latest
+
+      - name: Smoke test moonbit_latest
+        timeout-minutes: 10
+        run: nix shell .#moonbit_latest -c bash ./scripts/smoke-moonbit-latest.sh
+
+  validate-negative-path:
+    name: Validator negative-path test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v30
+
+      - name: Build moonbit_latest and test validator rejects broken bundle
+        timeout-minutes: 20
+        run: |
+          # Build a known-good moonbit_latest
+          nix build .#moonbit_latest
+
+          # Copy the built moon home to a writable temp directory
+          moon_home=$(mktemp -d)
+          cp -r result/* "$moon_home/"
+          chmod -R u+w "$moon_home"
+
+          # Verify validator passes on intact bundle
+          bash ./scripts/validate-core-bundle.sh "$moon_home"
+
+          # Remove one required backend sentinel to simulate broken bundle
+          rm -f "$moon_home/lib/core/target/wasm-gc/release/bundle/builtin/builtin.mi"
+
+          # Validator must now fail (exit non-zero)
+          if bash ./scripts/validate-core-bundle.sh "$moon_home" 2>/dev/null; then
+            echo "ERROR: validator should have failed on broken bundle but did not" >&2
+            exit 1
+          fi
+
+          echo "PASS: validator correctly rejected broken bundle"
+          rm -rf "$moon_home"

@@ -1,4 +1,5 @@
 {
+  jq,
   nodejs,
   symlinkJoin,
   makeWrapper,
@@ -24,6 +25,9 @@ symlinkJoin {
 
     PATH=$out/bin $out/bin/${toolchains.meta.mainProgram} bundle --all --source-dir $out/lib/core
 
+    # Validate core bundle completeness (fail build on broken bundle)
+    PATH=${jq}/bin:$PATH bash ${../scripts/validate-core-bundle.sh} $out
+
     wrapProgram $out/bin/${toolchains.meta.mainProgram} \
       --set MOON_HOME $out
 
@@ -32,7 +36,7 @@ symlinkJoin {
     substitute $out/bin/.moonbit-lsp-orig $out/bin/moonbit-lsp \
       --replace-fail "#!/usr/bin/env node" "${''
         #!${nodejs}/bin/node
-        process.env.MOON_HOME = \"$out\";
+        process.env.MOON_HOME = "$out";
       ''}"
     chmod +x $out/bin/moonbit-lsp
   '';

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 toolchains_dir="./versions/toolchains"
 latest_file="$toolchains_dir/latest.json"
@@ -33,6 +34,14 @@ fetch-github-sha256() {
   echo "$hash"
 }
 
+# Save known-good latest.json before any mutations
+known_good_latest=$(cat "$latest_file")
+
+restore_known_good() {
+  echo -e "\e[0;31mRestoring known-good latest.json\e[0m" > /dev/stderr
+  echo "$known_good_latest" > "$latest_file"
+}
+
 run_version=""
 old_version=$($sednr 's|^\s*"version\": \"(.*)\",$|\1|p' $latest_file)
 for target in linux-x86_64 darwin-aarch64; do # Keep the linux-x86_64 first
@@ -57,7 +66,7 @@ for target in linux-x86_64 darwin-aarch64; do # Keep the linux-x86_64 first
 
     # Run only once on linux-x86_64
     # assume that all `moonc` and `moon` in different arches have the same version
-    if [ -z "${run_version}" ] || [ -z "${moon_version}" ]; then
+    if [ -z "${run_version}" ] || [ -z "${moon_version:-}" ]; then
       run_version=$(nix run .\#moonc -- -v)
       moon_version=$(nix run .\#moon version)
 
@@ -73,8 +82,9 @@ for target in linux-x86_64 darwin-aarch64; do # Keep the linux-x86_64 first
       fi
     fi
 
-    if [ -z "${run_version}" ] || [ -z "${moon_version}" ]; then
+    if [ -z "${run_version}" ] || [ -z "${moon_version:-}" ]; then
       echo -e "error: failed get version from toolchain" > /dev/stderr
+      restore_known_good
       exit 1
     fi
 
@@ -101,6 +111,23 @@ for target in linux-x86_64 darwin-aarch64; do # Keep the linux-x86_64 first
     $sedi "s|moonHash\": \"sha256-.*\"|moonHash\": \"sha256-$moon_hash\"|" $latest_file
 
     echo "moon_revision=$short_rev" >> "$GITHUB_OUTPUT"
+
+    # --- Candidate promotion: build + validate before committing ---
+    echo -e "\e[0;36mBuilding candidate moonbit_latest for validation...\e[0m" > /dev/stderr
+    if ! nix build .#moonbit_latest 2>&1; then
+      echo -e "\e[0;31mERROR: candidate moonbit_latest failed to build\e[0m" > /dev/stderr
+      restore_known_good
+      exit 1
+    fi
+
+    # Read candidate version from latest.json and verify it matches
+    candidate_version=$($sednr 's|^\s*"version\": \"(.*)\",$|\1|p' $latest_file)
+    echo -e "\e[0;36mCandidate version from latest.json: \e[1;36m$candidate_version\e[0m" > /dev/stderr
+    if [ "$candidate_version" != "$run_version" ]; then
+      echo -e "\e[0;31mERROR: candidate version mismatch: latest.json=$candidate_version vs fetched=$run_version\e[0m" > /dev/stderr
+      restore_known_good
+      exit 1
+    fi
 
     # pin
     cp $latest_file "$toolchains_dir/$run_version.json"
